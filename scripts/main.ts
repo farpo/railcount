@@ -1,5 +1,7 @@
 import { world, system, Entity, Player, BlockPermutation, Vector3, Block, Dimension, BlockType, MinecraftBlockTypes } from "@minecraft/server";
-enum Dir{
+//Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+//The execution policy stuff
+enum Dir {
   FUP,
   FC,
   BUP,
@@ -9,192 +11,139 @@ enum Dir{
   RUP,
   RC,
 }
-class RailLoc implements Vector3{
-  public constructor(x:number, y:number, z:number){
+function checkStateAndLoc(p: Player) {
+  const b: Block | undefined = p.dimension.getBlock(p.location);
+  if (b !== undefined) {
+    let n: number | boolean | string | undefined = b.permutation.getState("rail_direction");
+    if (typeof n === "number") {
+      world.sendMessage(n + " : " + p.location.x + " " + p.location.y + " " + p.location.z);
+    }
+  }
+
+}
+class RailLoc implements Vector3 {
+  public constructor(x: number, y: number, z: number) {
     this.x = x;
     this.y = y;
     this.z = z;
   }
-  x:number;
-  y:number;
-  z:number;
-  public compare(v:Vector3){
-    if(this.x === v.x && this.y === v.y && this.z === v.z){
+  x: number;
+  y: number;
+  z: number;
+  public compare(v: Vector3) {
+    if (this.x === v.x && this.y === v.y && this.z === v.z) {
       return true;
-    } else{
+    } else {
       return false;
     }
   }
-  public offset(x:number, y:number, z:number){
+  public offset(x: number, y: number, z: number) {
     return new RailLoc(this.x + x, this.y + y, this.z + z);
   }
 }
-class RailIterator{
-  d:Dimension;
-  lenght:number;
-  current:RailLoc;
-  previous:RailLoc;
-  public constructor(x:number, y:number, z:number, d:Dimension){
+class RailIterator {
+  d: Dimension;
+  lenght: number;
+  current: RailLoc;
+  previous: RailLoc;
+  public constructor(x: number, y: number, z: number, d: Dimension) {
     this.d = d;
     this.lenght = 1;
     this.current = new RailLoc(Math.floor(x), Math.floor(y), Math.floor(z));
-    this.previous = this.current;
+
+    this.previous = new RailLoc(0, -64, 0);
   }
-  public run(p:Player){
-    while(this.next()){
+  public run(p: Player) {
+    while (this.next()) {
       this.lenght++;
-      
+
     }
-    p.location.x = this.current.x;
-    p.location.y = this.current.y;
-    p.location.z = this.current.z;
+    this.d.runCommandAsync("tp @a " + this.current.x.toString() + " " + this.current.y.toString() + " " + this.current.z.toString())
+
     return this.lenght.toString();
   }
-  public next(){
-    let b:Block | undefined = this.d.getBlock(this.current);
-    if(b !== undefined){
-      if(b.permutation.type === MinecraftBlockTypes.rail || b.permutation.type === MinecraftBlockTypes.goldenRail){
-        let next:RailLoc;
-        if(this.isValid(this.current.offset(-1, 0, 0), Dir.LC)){
-          next = this.current.offset(-1, 0, 0);
-        }
-        else if(this.isValid(this.current.offset(-1, 1, 0), Dir.LUP)){
-          next = this.current.offset(-1, 1, 0);
-        }
-        else if(this.isValid(this.current.offset(-1, -1, 0), Dir.LC)){
-          next = this.current.offset(-1, -1, 0);
+  public next() {
 
-        }
-        else if(this.isValid(this.current.offset(1, 0, 0), Dir.RC)){
-          next = this.current.offset(1, 0, 0);
+    let b: Block | undefined = this.d.getBlock(this.current);
 
+    if (b !== undefined) {
+      let s: number | boolean | undefined | string = b?.permutation.getState("rail_direction");
+      if (typeof s === "number") {
+        let next: RailLoc | boolean = this.current;
+        switch (s) {
+          case 0:
+            next = this.validate(this.current.offset(0, 0, 1), this.current.offset(0, 0, -1));
+            break;
+          case 1:
+            next = this.validate(this.current.offset(-1, 0, 0), this.current.offset(1, 0, 0));
+            break;
+          case 2:
+            next = this.validate(this.current.offset(-1, 0, 0), this.current.offset(1, 1, 0));
+            break;
+          case 3:
+            next = this.validate(this.current.offset(-1, 1, 0), this.current.offset(1, 0, 0));
+            break;
+          case 4:
+            next = this.validate(this.current.offset(0, 1, -1), this.current.offset(0, 0, 1));
+            break;
+          case 5:
+            next = this.validate(this.current.offset(0, 1, 1), this.current.offset(0, 0, -1));
+            break;
+          case 6:
+            next = this.validate(this.current.offset(0, 0, 1), this.current.offset(1, 0, 0));
+            break;
+          case 7:
+            next = this.validate(this.current.offset(0, 0, 1), this.current.offset(-1, 0, 0));
+            break;
+          case 8:
+            next = this.validate(this.current.offset(0, 0, -1), this.current.offset(-1, 0, 0));
+            break;
+          case 9:
+            next = this.validate(this.current.offset(0, 0, -1), this.current.offset(1, 0, 0));
+            break;
         }
-        else if(this.isValid(this.current.offset(1, 1, 0), Dir.RUP)){
-          next = this.current.offset(1, 1, 0);
-
-        }
-        else if(this.isValid(this.current.offset(1, -1, 0), Dir.RC)){
-          next = this.current.offset(1, -1, 0);
-
-        }
-        else if(this.isValid(this.current.offset(0, 0, 1), Dir.BC)){
-          next = this.current.offset(0, 0, 1);
-
-        }
-        else if(this.isValid(this.current.offset(0, 1, 1), Dir.BUP)){
-          next = this.current.offset(0, 1, 1);
-
-        }
-        else if(this.isValid(this.current.offset(0, -1, 1), Dir.BC)){
-          next = this.current.offset(0, -1, 1);
-
-        }
-        else if(this.isValid(this.current.offset(0, 0, -1), Dir.FC)){
-          next = this.current.offset(0, 0, -1);
-
-        }
-        else if(this.isValid(this.current.offset(0, 1, -1), Dir.FUP)){
-          next = this.current.offset(0, 1, -1);
-
-        }
-        else if(this.isValid(this.current.offset(0, -1, -1), Dir.FC)){
-          next = this.current.offset(0, -1, -1);
-
-        } else{
-          return false;
-        }
-        this.previous = this.current;
-        this.current = next;
-        return true;
-      } return false;
-    }
-    return false;
-  }
-  public isValid(loc:Vector3, dir:Dir){
-    let b:Block | undefined = this.d.getBlock(this.current);
-    let mb:Block | undefined = this.d.getBlock(this.current);
-
-    if(mb !== undefined || b !== undefined){
-      if(mb?.permutation.type === MinecraftBlockTypes.rail || mb?.permutation.type === MinecraftBlockTypes.goldenRail){
-        let s:number | boolean | undefined | string = b?.permutation.getState("rail_direction");
-        if(typeof s === "number"){
-          world.sendMessage(s?.toString() + " " + this.current.x.toString() + " "  + " " + this.current.y.toString() + " " + this.current.z.toString());
-        }
-        if(this.previous.compare(loc)){
-          return false;
-        } else{
-          switch(dir){
-            case Dir.FUP:
-              if(s === 4){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-            case Dir.FC:
-              if(s === 5 || s=== 0 || s=== 8 || s===9){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-            case Dir.BUP:
-              if(s === 5){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-            case Dir.BC:
-              if(s === 4 || s=== 0 || s=== 6 || s===7){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-              break;
-            case Dir.LUP:
-              if(s === 3){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-            case Dir.LC:
-              if(s === 1 || s=== 2 || s=== 8 || s===7){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-            case Dir.RUP:
-              if(s === 2){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-            case Dir.RC:
-              if(s === 1 || s=== 3 || s=== 6 || s===9){
-                return true;
-              } else{
-                return false;
-              }
-              break;
-            default:
-              return false;
-              break;
-          }
+        if (next !== false) {
+          this.previous = this.current;
+          this.current = next;
+          return true;
         }
 
       }
+    }
+
+    return false;
+  }
+  private validate(loc1: RailLoc, loc2: RailLoc) {
+    let down1 = loc1.offset(0, -1, 0);
+    let down2 = loc1.offset(0, -1, 0);
+
+    if (!loc1.compare(this.previous) && this.isRail(loc1)) {
+      return loc1;
+    }
+    else if (!loc2.compare(this.previous) && this.isRail(loc2)) {
+      return loc2;
+    }
+    if (!down1.compare(this.previous) && this.isRail(down1)) {
+      return down1;
+    }
+    else if (!down2.compare(this.previous) && this.isRail(down2)) {
+      return down2;
+    } else {
       return false;
+    }
+  }
+  private isRail(loc: RailLoc) {
+    let b: Block | undefined = this.d.getBlock(this.current);
+    if (b !== undefined) {
+      if (b?.permutation.type === MinecraftBlockTypes.rail || b?.permutation.type === MinecraftBlockTypes.goldenRail) {
+        return true;
+      }
     }
     return false;
   }
+
 }
 let tickIndex = 0;
-const loc = new RailLoc(50, 20 ,10);
 function mainTick() {
   try {
     tickIndex++;
@@ -202,11 +151,13 @@ function mainTick() {
     if (tickIndex === 100) {
       world.getDimension("overworld").runCommandAsync("say Hello starter!");
       world.beforeEvents.chatSend.subscribe(async (eventData) => {
-        if(eventData.message === "po"){
-          const p:Player = eventData.sender;
-          const counter:RailIterator = new RailIterator(p.location.x, p.location.y, p.location.z, p.dimension);
+        if (eventData.message === "po") {
+          const p: Player = eventData.sender;
+          const counter: RailIterator = new RailIterator(p.location.x, p.location.y, p.location.z, p.dimension);
           world.sendMessage(counter.run(eventData.sender).toString());
           world.sendMessage("op");
+        } else if (eventData.message === "no") {
+          checkStateAndLoc(eventData.sender);
         }
       });
     }

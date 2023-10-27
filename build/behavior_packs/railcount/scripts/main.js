@@ -1,4 +1,6 @@
 import { world, system, MinecraftBlockTypes } from "@minecraft/server";
+//Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+//The execution policy stuff
 var Dir;
 (function (Dir) {
     Dir[Dir["FUP"] = 0] = "FUP";
@@ -33,66 +35,87 @@ class RailIterator {
         this.d = d;
         this.lenght = 1;
         this.current = new RailLoc(Math.floor(x), Math.floor(y), Math.floor(z));
-        this.previous = this.current;
+        this.previous = new RailLoc(0, -64, 0);
     }
     run(p) {
         while (this.next()) {
             this.lenght++;
         }
-        p.location.x = this.current.x;
-        p.location.y = this.current.y;
-        p.location.z = this.current.z;
+        this.d.runCommandAsync("tp @a " + this.current.x.toString() + " " + this.current.y.toString() + " " + this.current.z.toString());
         return this.lenght.toString();
     }
     next() {
         let b = this.d.getBlock(this.current);
         if (b !== undefined) {
-            if (b.permutation.type === MinecraftBlockTypes.rail || b.permutation.type === MinecraftBlockTypes.goldenRail) {
-                let next;
-                if (this.isValid(this.current.offset(-1, 0, 0), Dir.LC)) {
-                    next = this.current.offset(-1, 0, 0);
+            let s = b?.permutation.getState("rail_direction");
+            if (typeof s === "number") {
+                let next = this.current;
+                switch (s) {
+                    case 0:
+                        next = this.validate(this.current.offset(0, 0, 1), this.current.offset(0, 0, -1));
+                        break;
+                    case 1:
+                        next = this.validate(this.current.offset(-1, 0, 0), this.current.offset(1, 0, 0));
+                        break;
+                    case 2:
+                        next = this.validate(this.current.offset(-1, 0, 0), this.current.offset(1, 1, 0));
+                        break;
+                    case 3:
+                        next = this.validate(this.current.offset(-1, 1, 0), this.current.offset(1, 0, 0));
+                        break;
+                    case 4:
+                        next = this.validate(this.current.offset(0, 1, -1), this.current.offset(0, 0, 1));
+                        break;
+                    case 5:
+                        next = this.validate(this.current.offset(0, 1, 1), this.current.offset(0, 0, -1));
+                        break;
+                    case 6:
+                        next = this.validate(this.current.offset(0, 0, 1), this.current.offset(1, 0, 0));
+                        break;
+                    case 7:
+                        next = this.validate(this.current.offset(0, 0, 1), this.current.offset(-1, 0, 0));
+                        break;
+                    case 8:
+                        next = this.validate(this.current.offset(0, 0, -1), this.current.offset(-1, 0, 0));
+                        break;
+                    case 9:
+                        next = this.validate(this.current.offset(0, 0, -1), this.current.offset(1, 0, 0));
+                        break;
                 }
-                else if (this.isValid(this.current.offset(-1, 1, 0), Dir.LUP)) {
-                    next = this.current.offset(-1, 1, 0);
+                if (next !== false) {
+                    this.previous = this.current;
+                    this.current = next;
+                    return true;
                 }
-                else if (this.isValid(this.current.offset(-1, -1, 0), Dir.LC)) {
-                    next = this.current.offset(-1, -1, 0);
-                }
-                else if (this.isValid(this.current.offset(1, 0, 0), Dir.RC)) {
-                    next = this.current.offset(1, 0, 0);
-                }
-                else if (this.isValid(this.current.offset(1, 1, 0), Dir.RUP)) {
-                    next = this.current.offset(1, 1, 0);
-                }
-                else if (this.isValid(this.current.offset(1, -1, 0), Dir.RC)) {
-                    next = this.current.offset(1, -1, 0);
-                }
-                else if (this.isValid(this.current.offset(0, 0, 1), Dir.BC)) {
-                    next = this.current.offset(0, 0, 1);
-                }
-                else if (this.isValid(this.current.offset(0, 1, 1), Dir.BUP)) {
-                    next = this.current.offset(0, 1, 1);
-                }
-                else if (this.isValid(this.current.offset(0, -1, 1), Dir.BC)) {
-                    next = this.current.offset(0, -1, 1);
-                }
-                else if (this.isValid(this.current.offset(0, 0, -1), Dir.FC)) {
-                    next = this.current.offset(0, 0, -1);
-                }
-                else if (this.isValid(this.current.offset(0, 1, -1), Dir.FUP)) {
-                    next = this.current.offset(0, 1, -1);
-                }
-                else if (this.isValid(this.current.offset(0, -1, -1), Dir.FC)) {
-                    next = this.current.offset(0, -1, -1);
-                }
-                else {
-                    return false;
-                }
-                this.previous = this.current;
-                this.current = next;
+            }
+        }
+        return false;
+    }
+    validate(loc1, loc2) {
+        let down1 = loc1.offset(0, -1, 0);
+        let down2 = loc1.offset(0, -1, 0);
+        if (!loc1.compare(this.previous) && this.isRail(loc1)) {
+            return loc1;
+        }
+        else if (!loc2.compare(this.previous) && this.isRail(loc2)) {
+            return loc2;
+        }
+        if (!down1.compare(this.previous) && this.isRail(down1)) {
+            return down1;
+        }
+        else if (!down2.compare(this.previous) && this.isRail(down2)) {
+            return down2;
+        }
+        else {
+            return false;
+        }
+    }
+    isRail(loc) {
+        let b = this.d.getBlock(this.current);
+        if (b !== undefined) {
+            if (b?.permutation.type === MinecraftBlockTypes.rail || b?.permutation.type === MinecraftBlockTypes.goldenRail) {
                 return true;
             }
-            return false;
         }
         return false;
     }
@@ -103,7 +126,7 @@ class RailIterator {
             if (mb?.permutation.type === MinecraftBlockTypes.rail || mb?.permutation.type === MinecraftBlockTypes.goldenRail) {
                 let s = b?.permutation.getState("rail_direction");
                 if (typeof s === "number") {
-                    world.sendMessage(s?.toString() + " " + this.current.x.toString() + " " + " " + this.current.y.toString() + " " + this.current.z.toString());
+                    world.sendMessage(s?.toString() + " " + this.current.x.toString() + " " + " " + this.current.y.toString() + " " + this.current.z.toString() + " " + this.previous.x.toString() + " " + " " + this.previous.y.toString() + " " + this.previous.z.toString());
                 }
                 if (this.previous.compare(loc)) {
                     return false;
@@ -187,7 +210,6 @@ class RailIterator {
     }
 }
 let tickIndex = 0;
-const loc = new RailLoc(50, 20, 10);
 function mainTick() {
     try {
         tickIndex++;
