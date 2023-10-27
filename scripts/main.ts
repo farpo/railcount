@@ -48,7 +48,7 @@ class RailIterator {
   previous: RailLoc;
   public constructor(x: number, y: number, z: number, d: Dimension) {
     this.d = d;
-    this.lenght = 1;
+    this.lenght = 0;
     this.current = new RailLoc(Math.floor(x), Math.floor(y), Math.floor(z));
 
     this.previous = new RailLoc(0, -64, 0);
@@ -115,7 +115,7 @@ class RailIterator {
   }
   private validate(loc1: RailLoc, loc2: RailLoc) {
     let down1 = loc1.offset(0, -1, 0);
-    let down2 = loc1.offset(0, -1, 0);
+    let down2 = loc2.offset(0, -1, 0);
 
     if (!loc1.compare(this.previous) && this.isRail(loc1)) {
       return loc1;
@@ -123,7 +123,7 @@ class RailIterator {
     else if (!loc2.compare(this.previous) && this.isRail(loc2)) {
       return loc2;
     }
-    if (!down1.compare(this.previous) && this.isRail(down1)) {
+    else if (!down1.compare(this.previous) && this.isRail(down1)) {
       return down1;
     }
     else if (!down2.compare(this.previous) && this.isRail(down2)) {
@@ -133,7 +133,7 @@ class RailIterator {
     }
   }
   private isRail(loc: RailLoc) {
-    let b: Block | undefined = this.d.getBlock(this.current);
+    let b: Block | undefined = this.d.getBlock(loc);
     if (b !== undefined) {
       if (b?.permutation.type === MinecraftBlockTypes.rail || b?.permutation.type === MinecraftBlockTypes.goldenRail) {
         return true;

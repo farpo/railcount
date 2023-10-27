@@ -12,6 +12,15 @@ var Dir;
     Dir[Dir["RUP"] = 6] = "RUP";
     Dir[Dir["RC"] = 7] = "RC";
 })(Dir || (Dir = {}));
+function checkStateAndLoc(p) {
+    const b = p.dimension.getBlock(p.location);
+    if (b !== undefined) {
+        let n = b.permutation.getState("rail_direction");
+        if (typeof n === "number") {
+            world.sendMessage(n + " : " + p.location.x + " " + p.location.y + " " + p.location.z);
+        }
+    }
+}
 class RailLoc {
     constructor(x, y, z) {
         this.x = x;
@@ -33,7 +42,7 @@ class RailLoc {
 class RailIterator {
     constructor(x, y, z, d) {
         this.d = d;
-        this.lenght = 1;
+        this.lenght = 0;
         this.current = new RailLoc(Math.floor(x), Math.floor(y), Math.floor(z));
         this.previous = new RailLoc(0, -64, 0);
     }
@@ -93,14 +102,14 @@ class RailIterator {
     }
     validate(loc1, loc2) {
         let down1 = loc1.offset(0, -1, 0);
-        let down2 = loc1.offset(0, -1, 0);
+        let down2 = loc2.offset(0, -1, 0);
         if (!loc1.compare(this.previous) && this.isRail(loc1)) {
             return loc1;
         }
         else if (!loc2.compare(this.previous) && this.isRail(loc2)) {
             return loc2;
         }
-        if (!down1.compare(this.previous) && this.isRail(down1)) {
+        else if (!down1.compare(this.previous) && this.isRail(down1)) {
             return down1;
         }
         else if (!down2.compare(this.previous) && this.isRail(down2)) {
@@ -111,100 +120,11 @@ class RailIterator {
         }
     }
     isRail(loc) {
-        let b = this.d.getBlock(this.current);
+        let b = this.d.getBlock(loc);
         if (b !== undefined) {
             if (b?.permutation.type === MinecraftBlockTypes.rail || b?.permutation.type === MinecraftBlockTypes.goldenRail) {
                 return true;
             }
-        }
-        return false;
-    }
-    isValid(loc, dir) {
-        let b = this.d.getBlock(this.current);
-        let mb = this.d.getBlock(this.current);
-        if (mb !== undefined || b !== undefined) {
-            if (mb?.permutation.type === MinecraftBlockTypes.rail || mb?.permutation.type === MinecraftBlockTypes.goldenRail) {
-                let s = b?.permutation.getState("rail_direction");
-                if (typeof s === "number") {
-                    world.sendMessage(s?.toString() + " " + this.current.x.toString() + " " + " " + this.current.y.toString() + " " + this.current.z.toString() + " " + this.previous.x.toString() + " " + " " + this.previous.y.toString() + " " + this.previous.z.toString());
-                }
-                if (this.previous.compare(loc)) {
-                    return false;
-                }
-                else {
-                    switch (dir) {
-                        case Dir.FUP:
-                            if (s === 4) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                        case Dir.FC:
-                            if (s === 5 || s === 0 || s === 8 || s === 9) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                        case Dir.BUP:
-                            if (s === 5) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                        case Dir.BC:
-                            if (s === 4 || s === 0 || s === 6 || s === 7) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                            break;
-                        case Dir.LUP:
-                            if (s === 3) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                        case Dir.LC:
-                            if (s === 1 || s === 2 || s === 8 || s === 7) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                        case Dir.RUP:
-                            if (s === 2) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                        case Dir.RC:
-                            if (s === 1 || s === 3 || s === 6 || s === 9) {
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
-                            break;
-                        default:
-                            return false;
-                            break;
-                    }
-                }
-            }
-            return false;
         }
         return false;
     }
@@ -221,6 +141,9 @@ function mainTick() {
                     const counter = new RailIterator(p.location.x, p.location.y, p.location.z, p.dimension);
                     world.sendMessage(counter.run(eventData.sender).toString());
                     world.sendMessage("op");
+                }
+                else if (eventData.message === "no") {
+                    checkStateAndLoc(eventData.sender);
                 }
             });
         }
