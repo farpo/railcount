@@ -21,6 +21,11 @@ function checkStateAndLoc(p) {
         }
     }
 }
+function randomNumberBetween(min, max) {
+    return Math.random() * (max - min) + min;
+}
+let randomNumber = randomNumberBetween(1, 10);
+console.log(randomNumber);
 class RailLoc {
     constructor(x, y, z) {
         this.x = x;
@@ -44,6 +49,7 @@ class RailIterator {
         this.d = d;
         this.lenght = 0;
         this.current = new RailLoc(Math.floor(x), Math.floor(y), Math.floor(z));
+        this.areas = new Set();
         this.previous = new RailLoc(0, -64, 0);
     }
     run(p) {
@@ -51,6 +57,9 @@ class RailIterator {
             this.lenght++;
         }
         this.d.runCommandAsync("tp @a " + this.current.x.toString() + " " + this.current.y.toString() + " " + this.current.z.toString());
+        for (const areaname of this.areas) {
+            this.d.runCommandAsync("tickingarea remove " + areaname);
+        }
         return this.lenght.toString();
     }
     next() {
@@ -125,6 +134,14 @@ class RailIterator {
             if (b?.permutation.type === MinecraftBlockTypes.rail || b?.permutation.type === MinecraftBlockTypes.goldenRail) {
                 return true;
             }
+        }
+        else {
+            let areaname = randomNumberBetween(0, 1000000).toString();
+            while (this.areas.has(areaname)) {
+                areaname = randomNumberBetween(0, 1000000).toString();
+            }
+            this.areas.add(areaname);
+            this.d.runCommand("tickingarea add " + (this.current.x - 8) + " " + (this.current.y - 8) + " " + (this.current.z - 8) + " " + (this.current.x + 8) + " " + (this.current.y + 8) + " " + (this.current.z + 8) + " " + areaname + " true");
         }
         return false;
     }
