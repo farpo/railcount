@@ -21,6 +21,27 @@ function checkStateAndLoc(p: Player) {
   }
 
 }
+async function getBlockAsync(dimension: Dimension, blockLocation: Vector3) {
+  let block = dimension.getBlock(blockLocation);
+  block = (block) ? block : await new Promise((resolve) => {
+    const runId = system.runInterval(() => {
+      try {
+        block = dimension.getBlock(blockLocation);
+        if (!block) return;
+        system.clearRun(runId);
+        resolve(block);
+      } catch (error: any) {
+        console.warn('ingore', error, error.stack);
+      }
+    });
+  });
+  return block;
+} function randomNumberBetween(min: number, max: number): number {
+  return Math.random() * (max - min) + min;
+}
+
+let randomNumber = randomNumberBetween(1, 10);
+console.log(randomNumber);
 class RailLoc implements Vector3 {
   public constructor(x: number, y: number, z: number) {
     this.x = x;
@@ -46,11 +67,13 @@ class RailIterator {
   lenght: number;
   current: RailLoc;
   previous: RailLoc;
+  areas: Set<string>;
+
   public constructor(x: number, y: number, z: number, d: Dimension) {
     this.d = d;
     this.lenght = 0;
     this.current = new RailLoc(Math.floor(x), Math.floor(y), Math.floor(z));
-
+    this.areas = new Set();
     this.previous = new RailLoc(0, -64, 0);
   }
   public run(p: Player) {
@@ -59,7 +82,9 @@ class RailIterator {
 
     }
     this.d.runCommandAsync("tp @a " + this.current.x.toString() + " " + this.current.y.toString() + " " + this.current.z.toString())
-
+    for (const areaname of this.areas) {
+      this.d.runCommandAsync("tickingarea remove " + areaname);
+    }
     return this.lenght.toString();
   }
   public next() {
@@ -132,12 +157,22 @@ class RailIterator {
       return false;
     }
   }
-  private isRail(loc: RailLoc) {
+  private isRail(loc: RailLoc): boolean {
     let b: Block | undefined = this.d.getBlock(loc);
+
     if (b !== undefined) {
       if (b?.permutation.type === MinecraftBlockTypes.rail || b?.permutation.type === MinecraftBlockTypes.goldenRail) {
         return true;
       }
+    }
+    else {
+      let areaname: string = randomNumberBetween(0, 1000000).toString();
+      while (this.areas.has(areaname)) {
+        areaname = randomNumberBetween(0, 1000000).toString();
+      }
+      this.areas.add(areaname);
+      this.d.runCommand("tickingarea add " + (this.current.x - 8) + " " + (this.current.y - 8) + " " + (this.current.z - 8) + " " + (this.current.x + 8) + " " + (this.current.y + 8) + " " + (this.current.z + 8) + " " + areaname + " true");
+      return this.isRail(loc);
     }
     return false;
   }
