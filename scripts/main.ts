@@ -53,13 +53,11 @@ class RailIterator {
   lenght: number;
   current: RailLoc;
   previous: RailLoc;
-  areas: Set<string>;
 
   public constructor(x: number, y: number, z: number, d: Dimension) {
     this.d = d;
     this.lenght = 0;
     this.current = new RailLoc(Math.floor(x), Math.floor(y), Math.floor(z));
-    this.areas = new Set();
     this.previous = new RailLoc(0, -64, 0);
   }
   public run(p: Player) {
@@ -68,9 +66,6 @@ class RailIterator {
 
     }
     this.d.runCommandAsync("tp @a " + this.current.x.toString() + " " + this.current.y.toString() + " " + this.current.z.toString())
-    for (const areaname of this.areas) {
-      this.d.runCommandAsync("tickingarea remove " + areaname);
-    }
     return this.lenght.toString();
   }
   public next() {
@@ -151,20 +146,13 @@ class RailIterator {
         return true;
       }
     }
-    else {
-      let areaname: string = randomNumberBetween(0, 1000000).toString();
-      while (this.areas.has(areaname)) {
-        areaname = randomNumberBetween(0, 1000000).toString();
-      }
-      this.areas.add(areaname);
-      this.d.runCommand("tickingarea add " + (this.current.x - 8) + " " + (this.current.y - 8) + " " + (this.current.z - 8) + " " + (this.current.x + 8) + " " + (this.current.y + 8) + " " + (this.current.z + 8) + " " + areaname + " true");
-      return this.isRail(loc);
-    }
     return false;
   }
 
 }
 let tickIndex = 0;
+let counter: RailIterator;
+
 function mainTick() {
   try {
     tickIndex++;
@@ -172,12 +160,14 @@ function mainTick() {
     if (tickIndex === 100) {
       world.getDimension("overworld").runCommandAsync("say Hello starter!");
       world.beforeEvents.chatSend.subscribe(async (eventData) => {
+        const p: Player = eventData.sender;
         if (eventData.message === "po") {
-          const p: Player = eventData.sender;
-          const counter: RailIterator = new RailIterator(p.location.x, p.location.y, p.location.z, p.dimension);
+          counter = new RailIterator(p.location.x, p.location.y, p.location.z, p.dimension);
           world.sendMessage(counter.run(eventData.sender).toString());
           world.sendMessage("op");
-        } else if (eventData.message === "no") {
+        } else if (eventData.message === "co") {
+          world.sendMessage(counter.run(eventData.sender).toString());
+          world.sendMessage("op");
           checkStateAndLoc(eventData.sender);
         }
       });
