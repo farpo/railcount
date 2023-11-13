@@ -143,12 +143,12 @@ function mainTick() {
             world.getDimension("overworld").runCommandAsync("say Hello starter!");
             world.beforeEvents.chatSend.subscribe(async (eventData) => {
                 const p = eventData.sender;
-                if (eventData.message === "po") {
+                if (eventData.message === "start") {
                     counter = new RailIterator(p.location.x, p.location.y, p.location.z, p.dimension);
                     world.sendMessage(counter.run(eventData.sender).toString());
                     world.sendMessage("op");
                 }
-                else if (eventData.message === "co") {
+                else if (eventData.message === "c") {
                     world.sendMessage(counter.run(eventData.sender).toString());
                     world.sendMessage("op");
                     checkStateAndLoc(eventData.sender);
